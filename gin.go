@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin/render"
+	"github.com/valyala/fasthttp"
 )
 
 // Framework's version
@@ -223,7 +224,7 @@ func (engine *Engine) Run(addr ...string) (err error) {
 
 	address := resolveAddress(addr)
 	debugPrint("Listening and serving HTTP on %s\n", address)
-	err = http.ListenAndServe(address, engine)
+	err = fasthttp.ListenAndServe(address, engine.Handler)
 	return
 }
 
@@ -234,7 +235,7 @@ func (engine *Engine) RunTLS(addr string, certFile string, keyFile string) (err 
 	debugPrint("Listening and serving HTTPS on %s\n", addr)
 	defer func() { debugPrintError(err) }()
 
-	err = http.ListenAndServeTLS(addr, certFile, keyFile, engine)
+	err = fasthttp.ListenAndServeTLS(addr, certFile, keyFile, engine.Handler)
 	return
 }
 
@@ -251,15 +252,16 @@ func (engine *Engine) RunUnix(file string) (err error) {
 		return
 	}
 	defer listener.Close()
-	err = http.Serve(listener, engine)
+	err = fasthttp.Serve(listener, engine.Handler)
 	return
 }
 
 // Conforms to the http.Handler interface.
-func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (engine *Engine) Handler(ctx *fasthttp.RequestCtx) {
 	c := engine.pool.Get().(*Context)
-	c.writermem.reset(w)
-	c.Request = req
+
+	c.writermem.reset(ctx.Request)
+	c.Request = ctx
 	c.reset()
 
 	engine.handleHTTPRequest(c)

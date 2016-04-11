@@ -17,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/gin-gonic/gin/render"
 	"github.com/manucorporat/sse"
+	"github.com/valyala/fasthttp"
 	"golang.org/x/net/context"
 )
 
@@ -37,7 +38,7 @@ const abortIndex int8 = math.MaxInt8 / 2
 // manage the flow, validate the JSON of a request and render a JSON response for example.
 type Context struct {
 	writermem responseWriter
-	Request   *http.Request
+	Request   *fasthttp.RequestCtx
 	Writer    ResponseWriter
 
 	Params   Params
@@ -230,8 +231,8 @@ func (c *Context) DefaultQuery(key, defaultValue string) string {
 // 		("", true) == c.GetQuery("lastname")
 func (c *Context) GetQuery(key string) (string, bool) {
 	req := c.Request
-	if values, ok := req.URL.Query()[key]; ok && len(values) > 0 {
-		return values[0], true
+	if value := string(req.FormValue(key)); len(value) > 0 {
+		return value, true
 	}
 	return "", false
 }
@@ -243,7 +244,7 @@ func (c *Context) PostForm(key string) string {
 	return value
 }
 
-// PostForm returns the specified key from a POST urlencoded form or multipart form
+// DefaultPostForm returns the specified key from a POST urlencoded form or multipart form
 // when it exists, otherwise it returns the specified defaultValue string.
 // See: PostForm() and GetPostForm() for further information.
 func (c *Context) DefaultPostForm(key, defaultValue string) string {
@@ -262,12 +263,11 @@ func (c *Context) DefaultPostForm(key, defaultValue string) string {
 //							 	-->  ("", false) := GetPostForm("email") // do nothing with email
 func (c *Context) GetPostForm(key string) (string, bool) {
 	req := c.Request
-	req.ParseMultipartForm(32 << 20) // 32 MB
-	if values := req.PostForm[key]; len(values) > 0 {
-		return values[0], true
+	if value := string(req.FormValue(key)); len(value) > 0 {
+		return value, true
 	}
-	if req.MultipartForm != nil && req.MultipartForm.File != nil {
-		if values := req.MultipartForm.Value[key]; len(values) > 0 {
+	if form, err := req.MultipartForm(); err == nil {
+		if values := form.Value[key]; len(values) > 0 {
 			return values[0], true
 		}
 	}
@@ -283,7 +283,7 @@ func (c *Context) GetPostForm(key string) (string, bool) {
 // It decodes the json payload into the struct specified as a pointer.
 // Like ParseBody() but this method also writes a 400 error if the json is not valid.
 func (c *Context) Bind(obj interface{}) error {
-	b := binding.Default(c.Request.Method, c.ContentType())
+	b := binding.Default(string(c.Request.Method()), c.ContentType())
 	return c.BindWith(obj, b)
 }
 
