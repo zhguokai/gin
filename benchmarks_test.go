@@ -1,3 +1,7 @@
+// Copyright 2017 Manu Martinez-Almeida.  All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+
 package gin
 
 import (
@@ -50,12 +54,10 @@ func BenchmarkOneRouteJSON(B *testing.B) {
 		Status string `json:"status"`
 	}{"ok"}
 	router.GET("/json", func(c *Context) {
-		c.JSON(200, data)
+		c.JSON(http.StatusOK, data)
 	})
 	runRequest(B, router, "GET", "/json")
 }
-
-var htmlContentType = []string{"text/html; charset=utf-8"}
 
 func BenchmarkOneRouteHTML(B *testing.B) {
 	router := New()
@@ -64,7 +66,7 @@ func BenchmarkOneRouteHTML(B *testing.B) {
 	router.SetHTMLTemplate(t)
 
 	router.GET("/html", func(c *Context) {
-		c.HTML(200, "index", "hola")
+		c.HTML(http.StatusOK, "index", "hola")
 	})
 	runRequest(B, router, "GET", "/html")
 }
@@ -80,7 +82,7 @@ func BenchmarkOneRouteSet(B *testing.B) {
 func BenchmarkOneRouteString(B *testing.B) {
 	router := New()
 	router.GET("/text", func(c *Context) {
-		c.String(200, "this is a plain text")
+		c.String(http.StatusOK, "this is a plain text")
 	})
 	runRequest(B, router, "GET", "/text")
 }
